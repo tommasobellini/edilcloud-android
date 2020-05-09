@@ -41,7 +41,7 @@ import java.util.Locale;
 public class MainActivity extends AppCompatActivity {
 
     private WebView mWebView;
-    private String baseURL = "https://www.google.com";
+    private String baseURL = "https://parasasblog.wordpress.com/2020/05/09/how-to-create-webview-in-android/";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
