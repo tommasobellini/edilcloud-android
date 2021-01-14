@@ -1,4 +1,4 @@
-package com.paras.webviewexample;
+package com.monkeybits.edilcloud;
 
 import org.junit.Test;
 
