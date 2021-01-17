@@ -32,21 +32,16 @@ import android.util.Base64;
 import android.util.Log;
 import android.view.KeyEvent;
 import android.view.View;
-import android.view.ViewGroup;
 import android.view.WindowManager;
 import android.webkit.CookieManager;
-import android.webkit.DownloadListener;
 import android.webkit.JavascriptInterface;
 import android.webkit.MimeTypeMap;
 import android.webkit.PermissionRequest;
-import android.webkit.URLUtil;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
-import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
-import android.widget.Button;
 import android.widget.FrameLayout;
 import android.widget.Toast;
 
@@ -58,7 +53,7 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
 
-import com.onesignal.OSNotificationOpenedResult;
+import com.onesignal.OSNotificationOpenResult;
 import com.onesignal.OneSignal;
 
 import org.json.JSONObject;
@@ -274,10 +269,34 @@ public class MainActivity extends AppCompatActivity {
     private static final String ONESIGNAL_APP_ID = "0fbdf0cf-d9f5-4363-809f-4735b1bba268";
     public static final String USER_AGENT = "Mozilla/5.0 (Linux; Android 4.1.1; Galaxy Nexus Build/JRO03C) AppleWebKit/535.19 (KHTML, like Gecko) Chrome/18.0.1025.166 Mobile Safari/535.19";
     private static final String target_url_prefix="test.edilcloud.io";
+    private static boolean activityStarted;
 
     private void enableCamera() {
-        Intent intent = new Intent(this, com.monkeybits.edilcloud.CameraActivity.class);
+        Intent intent = new Intent(this, CameraActivity.class);
         startActivity(intent);
+    }
+
+    class MyNotificationOpenedHandler implements OneSignal.NotificationOpenedHandler {
+        @Override
+        public void notificationOpened(OSNotificationOpenResult result) {
+            // Get custom datas from notification
+            JSONObject data = result.notification.payload.additionalData;
+            if (data.has("redirect_url")) {
+                Intent intent = new Intent(getApplicationContext(), MainActivity.class);
+                intent.setFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT | Intent.FLAG_ACTIVITY_NEW_TASK);
+                intent.putExtra("url", data.optString("redirect_url"));
+                startActivity(intent);
+                mWebView.loadUrl(data.optString("redirect_url"));
+            }
+            // Launch new activity using Application object
+            startApp();
+        }
+
+        private void startApp() {
+            Intent intent = new Intent(globalContext, MainActivity.class)
+                    .setFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT | Intent.FLAG_ACTIVITY_NEW_TASK);
+            globalContext.startActivity(intent);
+        }
     }
 
     @Override
@@ -285,6 +304,14 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        if (activityStarted
+                && getIntent() != null
+                && (getIntent().getFlags() & Intent.FLAG_ACTIVITY_REORDER_TO_FRONT) != 0) {
+            finish();
+            return;
+        }
+
+        activityStarted = true;
         // Enable verbose OneSignal logging to debug issues if needed.
         OneSignal.setLogLevel(OneSignal.LOG_LEVEL.VERBOSE, OneSignal.LOG_LEVEL.NONE);
         //Button enableCamera = findViewById(R.id.enableCamera);
@@ -295,18 +322,10 @@ public class MainActivity extends AppCompatActivity {
 //            }
 //        });
         // OneSignal Initialization
-        OneSignal.initWithContext(this);
-        OneSignal.setAppId(ONESIGNAL_APP_ID);
-        OneSignal.setNotificationOpenedHandler(
-        new OneSignal.OSNotificationOpenedHandler() {
-            @Override
-            public void notificationOpened(OSNotificationOpenedResult result) {
-                JSONObject additionalData = result.getNotification().getAdditionalData();
-                if (additionalData.has("redirect_url")) {
-                    mWebView.loadUrl(additionalData.optString("redirect_url"));
-                }
-            }
-        });
+        OneSignal.startInit(this).inFocusDisplaying(OneSignal.OSInFocusDisplayOption.Notification)
+                .unsubscribeWhenNotificationsAreDisabled(true).setNotificationOpenedHandler(new MyNotificationOpenedHandler())
+                .init();
+
         ActivityCompat.requestPermissions(this,
                 new String[]{
                         Manifest.permission.WRITE_EXTERNAL_STORAGE,
