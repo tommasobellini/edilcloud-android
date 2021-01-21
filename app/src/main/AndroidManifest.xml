@@ -29,7 +29,7 @@
         <meta-data
             android:name="com.onesignal.Notification"
             android:resource="@drawable/ic_stat_name" />
-        <meta-data android:name="com.onesignal.NotificationAccentColor.DEFAULT" android:value="FF1BB6BE" />
+s        <meta-data android:name="com.onesignal.NotificationAccentColor.DEFAULT" android:value="FF1BB6BE" />
 <!--        <activity android:name=".CameraActivity"/>-->
         <activity
             android:name=".MainActivity"

@@ -21,6 +21,8 @@ import android.content.IntentFilter;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
+import android.graphics.Matrix;
+import android.media.ExifInterface;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -345,6 +347,7 @@ public class MainActivity extends AppCompatActivity {
         webSettings.setJavaScriptEnabled(true);
         webSettings.setDomStorageEnabled(true);
         webSettings.setAppCacheEnabled(true);
+        webSettings.setBuiltInZoomControls(true);
         webSettings.setSupportMultipleWindows(true);
         webSettings.setMediaPlaybackRequiresUserGesture(true);
         webSettings.setJavaScriptCanOpenWindowsAutomatically(true);
@@ -492,6 +495,7 @@ public class MainActivity extends AppCompatActivity {
             mWebviewPop.getSettings().setEnableSmoothTransition(true);
             mWebviewPop.getSettings().setUserAgentString(USER_AGENT + "yourAppName");
 
+
             // pop the  webview with alert dialog
             builder = new AlertDialog.Builder(MainActivity.this).create();
             builder.setTitle("");
@@ -603,7 +607,48 @@ public class MainActivity extends AppCompatActivity {
         );
     }
 
+    private static Bitmap rotateBitmap(Bitmap bitmap, int orientation) {
+        Matrix matrix = new Matrix();
+        switch (orientation) {
+            case ExifInterface.ORIENTATION_NORMAL:
+                return bitmap;
+            case ExifInterface.ORIENTATION_FLIP_HORIZONTAL:
+                matrix.setScale(-1, 1);
+                break;
+            case ExifInterface.ORIENTATION_ROTATE_180:
+                matrix.setRotate(180);
+                break;
+            case ExifInterface.ORIENTATION_FLIP_VERTICAL:
+                matrix.setRotate(180);
+                matrix.postScale(-1, 1);
+                break;
+            case ExifInterface.ORIENTATION_TRANSPOSE:
+                matrix.setRotate(90);
+                matrix.postScale(-1, 1);
+                break;
+            case ExifInterface.ORIENTATION_ROTATE_90:
+                matrix.setRotate(90);
+                break;
+            case ExifInterface.ORIENTATION_TRANSVERSE:
+                matrix.setRotate(-90);
+                matrix.postScale(-1, 1);
+                break;
+            case ExifInterface.ORIENTATION_ROTATE_270:
+                matrix.setRotate(-90);
+                break;
+            default:
+                return bitmap;
+        }
+        try {
+            Bitmap bmRotated = Bitmap.createBitmap(bitmap, 0, 0, bitmap.getWidth(), bitmap.getHeight(), matrix, true);
+            bitmap.recycle();
 
+            return bmRotated;
+        } catch (OutOfMemoryError e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
 
 
 
@@ -631,7 +676,10 @@ public class MainActivity extends AppCompatActivity {
                             Log.d(TAG, "onActivityResult: Compressing image");
                             FileOutputStream fileOutputStream = new FileOutputStream(compressedImageFile);
                             Bitmap originalBitmap = BitmapFactory.decodeFile(photoFile.getPath());
-                            originalBitmap.compress(Bitmap.CompressFormat.JPEG, 80, fileOutputStream);
+                            ExifInterface exif = new ExifInterface(photoFile.getPath());
+                            int orientation = exif.getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_UNDEFINED);
+                            Bitmap rotatedBitmap = rotateBitmap(originalBitmap, orientation);
+                            rotatedBitmap.compress(Bitmap.CompressFormat.JPEG, 80, fileOutputStream);
                         }
                     } catch (Exception e) {
                         e.printStackTrace();
@@ -663,6 +711,14 @@ public class MainActivity extends AppCompatActivity {
         @Override
         public boolean shouldOverrideUrlLoading(WebView view, String url) {
             String host = Uri.parse(url).getHost();
+            if (url.startsWith("mailto:")) {
+                startActivity(new Intent(Intent.ACTION_SENDTO, Uri.parse(url)));
+                return true;
+            } else if (url.startsWith("tel:")) {
+                startActivity(new Intent(Intent.ACTION_DIAL, Uri.parse(url)));
+                return true;
+            } else {
+            }
             //Log.d("shouldOverrideUrlLoading", url);
             if (host.equals(target_url_prefix))
             {
@@ -681,11 +737,12 @@ public class MainActivity extends AppCompatActivity {
             {
                 return false;
             }
-            // Otherwise, the link is not for a page on my site, so launch
-            // another Activity that handles URLs
-            Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
-            startActivity(intent);
-            return true;
+//            // Otherwise, the link is not for a page on my site, so launch
+//            // another Activity that handles URLs
+//            Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
+//            startActivity(intent);
+//            return true;
+              return true;
         }
     }
     public boolean onKeyDown(int keyCode, KeyEvent event) {
