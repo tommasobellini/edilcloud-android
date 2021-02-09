@@ -46,8 +46,14 @@ s        <meta-data android:name="com.onesignal.NotificationAccentColor.DEFAULT"
         <service
             android:name=".NotificationServiceExtension"
             android:permission="android.permission.BIND_JOB_SERVICE"
+            android:enabled="true"
             android:exported="false"
             tools:ignore="Instantiatable">
+            <intent-filter>
+                <action android:name="com.monkeybits.edilcloud.restart_service" />
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="com.google.firebase.MESSAGING_EVENT" />
+            </intent-filter>
             <intent-filter>
                 <action android:name="com.onesignal.NotificationExtender" />
             </intent-filter>
