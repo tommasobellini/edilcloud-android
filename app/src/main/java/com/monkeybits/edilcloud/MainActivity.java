@@ -69,6 +69,20 @@ class OneSignalSetUser {
         OneSignal.setExternalUserId(data);
     }
 }
+class RedirectBrowser {
+    private final WebView webview;
+    private Context context;
+    public RedirectBrowser(Context context, WebView webview) {
+        this.context = context;
+        this.webview = webview;
+    }
+    @JavascriptInterface
+    public void postMessage(String url) throws IOException {
+//        WebView mWebView = webview.findViewById(R.id.root_webview);
+//        mWebView.loadUrl(url);
+    }
+}
+
 class DownloadFiles {
     private Context context;
     public DownloadFiles(Context context) {
@@ -348,6 +362,7 @@ public class MainActivity extends AppCompatActivity {
         webSettings.setDomStorageEnabled(true);
         webSettings.setAppCacheEnabled(true);
         webSettings.setBuiltInZoomControls(true);
+        webSettings.setDisplayZoomControls(false);
         webSettings.setSupportMultipleWindows(true);
         webSettings.setMediaPlaybackRequiresUserGesture(true);
         webSettings.setJavaScriptCanOpenWindowsAutomatically(true);
@@ -363,6 +378,7 @@ public class MainActivity extends AppCompatActivity {
         mWebView.addJavascriptInterface(new JavaScriptInterface(getBaseContext()), "Android");
         mWebView.addJavascriptInterface(new OneSignalSetUser(), "OneSignalSetUser");
         mWebView.addJavascriptInterface(new DownloadFiles(getBaseContext()), "DownloadFiles");
+        mWebView.addJavascriptInterface(new RedirectBrowser(getBaseContext(), mWebView), "RedirectBrowser");
         CookieManager cookieManager = CookieManager.getInstance();
         cookieManager.setAcceptCookie(true);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
@@ -719,6 +735,9 @@ public class MainActivity extends AppCompatActivity {
                 return true;
             } else {
             }
+            if (url.contains("customer-portal") || url.contains("billing")){
+                return false;
+            }
             //Log.d("shouldOverrideUrlLoading", url);
             if (host.equals(target_url_prefix))
             {
@@ -739,10 +758,7 @@ public class MainActivity extends AppCompatActivity {
             }
 //            // Otherwise, the link is not for a page on my site, so launch
 //            // another Activity that handles URLs
-//            Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
-//            startActivity(intent);
-//            return true;
-              return true;
+            return true;
         }
     }
     public boolean onKeyDown(int keyCode, KeyEvent event) {
