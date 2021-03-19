@@ -15,6 +15,7 @@
     <uses-permission android:name="android.permission.RECORD_AUDIO"/>
     <uses-permission android:name="android.permission.VIDEO_CAPTURE" />
     <uses-permission android:name="android.permission.AUDIO_CAPTURE"/>
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
     <application
         android:allowBackup="true"
@@ -31,6 +32,13 @@
             android:resource="@drawable/ic_stat_name" />
 s        <meta-data android:name="com.onesignal.NotificationAccentColor.DEFAULT" android:value="FF1BB6BE" />
 <!--        <activity android:name=".CameraActivity"/>-->
+        <receiver android:enabled="true" android:name=".BootUpReceiver"
+            android:permission="android.permission.RECEIVE_BOOT_COMPLETED">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </receiver>
         <activity
             android:name=".MainActivity"
             android:launchMode="singleTop"

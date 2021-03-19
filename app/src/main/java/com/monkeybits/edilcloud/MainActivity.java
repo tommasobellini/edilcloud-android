@@ -30,6 +30,7 @@ import android.os.Environment;
 import android.os.Handler;
 import android.os.Message;
 import android.provider.MediaStore;
+import android.provider.Settings;
 import android.util.Base64;
 import android.util.Log;
 import android.view.KeyEvent;
@@ -55,6 +56,7 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
 
+import com.judemanutd.autostarter.AutoStartPermissionHelper;
 import com.onesignal.OSNotificationOpenResult;
 import com.onesignal.OneSignal;
 
@@ -283,7 +285,7 @@ public class MainActivity extends AppCompatActivity {
     private WebView mWebView;
     private String baseURL = "https://test.edilcloud.io";
     private static final String ONESIGNAL_APP_ID = "0fbdf0cf-d9f5-4363-809f-4735b1bba268";
-    public static final String USER_AGENT = "Mozilla/5.0 (Linux; Android 4.1.1; Galaxy Nexus Build/JRO03C) AppleWebKit/535.19 (KHTML, like Gecko) Chrome/18.0.1025.166 Mobile Safari/535.19";
+    public static final String USER_AGENT = "Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) ' + 'AppleWebKit/537.36 (KHTML, like Gecko) Chrome/62.0.3202.94 Mobile Safari/537.36";
     private static final String target_url_prefix="test.edilcloud.io";
     private static boolean activityStarted;
 
@@ -352,7 +354,7 @@ public class MainActivity extends AppCompatActivity {
         mWebView = findViewById(R.id.root_webview);
         mWebView.loadUrl(baseURL);
         mContainer = (FrameLayout) findViewById(R.id.webview_frame);
-
+        
         // CAMERA
         WebSettings webSettings = mWebView.getSettings();
         //webSettings.setForceDark(webSettings.FORCE_DARK_OFF);
@@ -391,6 +393,8 @@ public class MainActivity extends AppCompatActivity {
 //                mWebView.loadUrl(JavaScriptInterface.getBase64StringFromBlobUrl(url));
 //            }
 //        });
+        AutoStartPermissionHelper.getInstance().getAutoStartPermission(getBaseContext());
+        AutoStartPermissionHelper.getInstance().isAutoStartPermissionAvailable(getBaseContext());
     }
 
     private void download(final String url) {
@@ -772,4 +776,13 @@ public class MainActivity extends AppCompatActivity {
         return super.onKeyDown(keyCode, event);
     }
 
+}
+
+class BootUpReceiver extends BroadcastReceiver{
+    @Override
+    public void onReceive(Context context, Intent intent) {
+        Intent i = new Intent(context, MainActivity.class);
+        i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        context.startActivity(i);
+    }
 }
