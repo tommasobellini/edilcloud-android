@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "234649526371",
+    "project_id": "edilcloud-66a4c",
+    "storage_bucket": "edilcloud-66a4c.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:234649526371:android:40f4b3b3257b661249d856",
+        "android_client_info": {
+          "package_name": "com.monkeybits.edilcloud"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "234649526371-pao130mfved94q9it7qqh3s9710c1e4n.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.monkeybits.edilcloud",
+            "certificate_hash": "1299651899da5ffc6d7210e962404a0653f83015"
+          }
+        },
+        {
+          "client_id": "234649526371-fee8e01brco0m5lvpmvrlh68vl8p07ng.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBhGPgdic9UsatC5hWfxOfdatioQ4yUgHI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "234649526371-fee8e01brco0m5lvpmvrlh68vl8p07ng.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
