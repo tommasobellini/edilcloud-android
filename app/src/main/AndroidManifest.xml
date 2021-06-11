@@ -3,69 +3,57 @@
     xmlns:tools="http://schemas.android.com/tools"
     package="com.monkeybits.edilcloud">
 
-    <uses-permission android:name="android.permission.INTERNET"/>
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
-    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS"/>
-    <uses-permission android:name="android.permission.MICROPHONE"/>
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+    <uses-permission android:name="android.permission.MICROPHONE" />
+
     <uses-feature android:name="android.hardware.audio.low_latency" />
     <uses-feature android:name="android.hardware.audio.pro" />
-    <uses-feature android:name="android.hardware.microphone"/>
+    <uses-feature android:name="android.hardware.microphone" />
+
     <uses-permission android:name="android.permission.CAMERA" />
-    <uses-permission android:name="android.permission.RECORD_AUDIO"/>
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.VIDEO_CAPTURE" />
-    <uses-permission android:name="android.permission.AUDIO_CAPTURE"/>
+    <uses-permission android:name="android.permission.AUDIO_CAPTURE" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
     <application
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
+        android:requestLegacyExternalStorage="true"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:usesCleartextTraffic="true"
-        android:theme="@style/AppTheme">
-        <meta-data android:name="com.onesignal.NotificationServiceExtension"
-            android:value="com.monkeybits.edilcloud.NotificationServiceExtension" />
-        <meta-data
-            android:name="com.onesignal.Notification"
-            android:resource="@drawable/ic_stat_name" />
-s        <meta-data android:name="com.onesignal.NotificationAccentColor.DEFAULT" android:value="FF1BB6BE" />
-<!--        <activity android:name=".CameraActivity"/>-->
-        <receiver android:enabled="true" android:name=".BootUpReceiver"
-            android:permission="android.permission.RECEIVE_BOOT_COMPLETED">
-            <intent-filter>
-                <action android:name="android.intent.action.BOOT_COMPLETED" />
-                <category android:name="android.intent.category.DEFAULT" />
-            </intent-filter>
-        </receiver>
+        android:theme="@style/AppTheme"
+        android:usesCleartextTraffic="true">
+        <!-- <meta-data android:name="com.onesignal.NotificationServiceExtension" -->
+        <!-- android:value="com.monkeybits.edilcloud.NotificationServiceExtension" /> -->
+        <!-- <meta-data -->
+        <!-- android:name="com.onesignal.Notification" -->
+        <!-- android:resource="@drawable/ic_stat_name" /> -->
+        <!-- <meta-data android:name="com.onesignal.NotificationAccentColor.DEFAULT" android:value="FF1BB6BE" /> -->
+        <!-- <receiver android:enabled="true" android:name="com.onesignal.BootUpReceiver" -->
+        <!-- android:permission="android.permission.RECEIVE_BOOT_COMPLETED"> -->
+        <!-- <intent-filter> -->
+        <!-- <action android:name="android.intent.action.BOOT_COMPLETED" /> -->
+        <!-- <category android:name="android.intent.category.DEFAULT" /> -->
+        <!-- </intent-filter> -->
+        <!-- </receiver> -->
         <activity
             android:name=".MainActivity"
-            android:launchMode="singleTop"
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
             android:hardwareAccelerated="true"
-            android:windowSoftInputMode="adjustResize"
-            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode">
+            android:windowSoftInputMode="adjustResize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <service
-            android:name=".NotificationServiceExtension"
-            android:permission="android.permission.BIND_JOB_SERVICE"
-            android:enabled="true"
-            android:exported="false"
-            tools:ignore="Instantiatable">
-            <intent-filter>
-                <action android:name="com.monkeybits.edilcloud.restart_service" />
-                <action android:name="android.intent.action.BOOT_COMPLETED" />
-                <action android:name="com.google.firebase.MESSAGING_EVENT" />
-            </intent-filter>
-            <intent-filter>
-                <action android:name="com.onesignal.NotificationExtender" />
-            </intent-filter>
-        </service>
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="com.monkeybits.edilcloud.download.fileprovider"
@@ -75,6 +63,28 @@ s        <meta-data android:name="com.onesignal.NotificationAccentColor.DEFAULT"
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/provider_paths" />
         </provider>
+
+        <service
+            android:name=".MyFireBaseNotification"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.google.firebase.MESSAGING_EVENT" />
+            </intent-filter>
+        </service>
+
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_icon"
+            android:resource="@drawable/ic_stat_name" />
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_color"
+            android:resource="@android:color/white" />
+
+<!--        <receiver android:name=".MyBroadcast">-->
+<!--            <intent-filter>-->
+<!--                <action android:name="NotificationReceive">-->
+<!--                </action>-->
+<!--            </intent-filter>-->
+<!--        </receiver>-->
     </application>
 
 </manifest>

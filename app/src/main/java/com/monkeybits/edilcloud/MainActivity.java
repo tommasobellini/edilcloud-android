@@ -1,10 +1,7 @@
 package com.monkeybits.edilcloud;
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.app.ActivityCompat;
-import androidx.core.app.NotificationCompat;
-import androidx.core.content.FileProvider;
 
 import android.Manifest;
+import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.DownloadManager;
@@ -15,9 +12,9 @@ import android.app.PendingIntent;
 import android.content.ActivityNotFoundException;
 import android.content.BroadcastReceiver;
 import android.content.Context;
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
@@ -30,12 +27,12 @@ import android.os.Environment;
 import android.os.Handler;
 import android.os.Message;
 import android.provider.MediaStore;
-import android.provider.Settings;
 import android.util.Base64;
 import android.util.Log;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.WindowManager;
+import android.webkit.ConsoleMessage;
 import android.webkit.CookieManager;
 import android.webkit.JavascriptInterface;
 import android.webkit.MimeTypeMap;
@@ -48,36 +45,56 @@ import android.webkit.WebViewClient;
 import android.widget.FrameLayout;
 import android.widget.Toast;
 
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
+import androidx.core.app.NotificationCompat;
+import androidx.core.content.FileProvider;
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
+
+import com.google.firebase.messaging.FirebaseMessaging;
+import com.google.firebase.messaging.FirebaseMessagingService;
+import com.google.firebase.messaging.RemoteMessage;
+import com.judemanutd.autostarter.AutoStartPermissionHelper;
+
+import org.json.JSONObject;
+
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.Locale;
-
-import com.judemanutd.autostarter.AutoStartPermissionHelper;
-import com.onesignal.OSNotificationOpenResult;
-import com.onesignal.OneSignal;
-
-import org.json.JSONObject;
+import java.util.Map;
 
 
 class OneSignalSetUser {
     @JavascriptInterface
     public void postMessage(String data) throws IOException {
         final String TAG = "WebviewExample";
-        Log.d(TAG,"setExternalUserId: userid is " + data);
-        OneSignal.setExternalUserId(data);
+        Log.d(TAG, "setExternalUserId: userid is " + data);
+        FirebaseMessaging.getInstance().subscribeToTopic("user"+data)
+                .addOnCompleteListener(task -> {
+                    String msg = "msg subscribed";
+                    if (!task.isSuccessful()) {
+                        msg = "msg subscribe failed";
+                    }
+                    Log.d(TAG, msg);
+                });
+
     }
 }
+
 class RedirectBrowser {
     private final WebView webview;
     private Context context;
+
     public RedirectBrowser(Context context, WebView webview) {
         this.context = context;
         this.webview = webview;
     }
+
     @JavascriptInterface
     public void postMessage(String url) throws IOException {
 //        WebView mWebView = webview.findViewById(R.id.root_webview);
@@ -87,9 +104,11 @@ class RedirectBrowser {
 
 class DownloadFiles {
     private Context context;
+
     public DownloadFiles(Context context) {
         this.context = context;
     }
+
     private String fileExt(String url) {
         if (url.contains("?")) {
             url = url.substring(0, url.indexOf("?"));
@@ -107,13 +126,14 @@ class DownloadFiles {
             return ext.toLowerCase();
         }
     }
+
     @JavascriptInterface
     public void postMessage(String data) throws IOException {
         final String TAG = "WebviewExample";
         final String url = data;
-        Log.d(TAG,"DownloadFiles: file url is " + data);
+        Log.d(TAG, "DownloadFiles: file url is " + data);
         String destination = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS) + "/";
-        String fileName = url.substring( url.lastIndexOf('/')+1, url.length());
+        String fileName = url.substring(url.lastIndexOf('/') + 1, url.length());
 
         Log.d(TAG, "onDownloadStart: filename is " + fileName);
 
@@ -185,8 +205,10 @@ class DownloadFiles {
         }
     }
 }
+
 class JavaScriptInterface {
     private Context context;
+
     public JavaScriptInterface(Context context) {
         this.context = context;
     }
@@ -197,9 +219,9 @@ class JavaScriptInterface {
     }
 
     public static String getBase64StringFromBlobUrl(String blobUrl) {
-        if(blobUrl.startsWith("blob")){
+        if (blobUrl.startsWith("blob")) {
             return "javascript: var xhr = new XMLHttpRequest();" +
-                    "xhr.open('GET', '"+ blobUrl +"', true);" +
+                    "xhr.open('GET', '" + blobUrl + "', true);" +
                     "xhr.setRequestHeader('Content-type','application/pdf');" +
                     "xhr.responseType = 'blob';" +
                     "xhr.onload = function(e) {" +
@@ -217,6 +239,7 @@ class JavaScriptInterface {
         }
         return "javascript: console.log('It is not a Blob URL');";
     }
+
     private void convertBase64StringToPdfAndStoreIt(String base64PDf) throws IOException {
         final int notificationId = 1;
         String currentDateTime = DateFormat.getDateTimeInstance().format(new Date());
@@ -230,17 +253,17 @@ class JavaScriptInterface {
 
         if (dwldsPath.exists()) {
             Intent intent = new Intent();
-            intent.setAction(android.content.Intent.ACTION_VIEW);
-            Uri apkURI = FileProvider.getUriForFile(context,context.getApplicationContext().getPackageName() + ".provider", dwldsPath);
+            intent.setAction(Intent.ACTION_VIEW);
+            Uri apkURI = FileProvider.getUriForFile(context, context.getApplicationContext().getPackageName() + ".provider", dwldsPath);
             intent.setDataAndType(apkURI, MimeTypeMap.getSingleton().getMimeTypeFromExtension("jpg"));
             intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-            PendingIntent pendingIntent = PendingIntent.getActivity(context,1, intent, PendingIntent.FLAG_CANCEL_CURRENT);
+            PendingIntent pendingIntent = PendingIntent.getActivity(context, 1, intent, PendingIntent.FLAG_CANCEL_CURRENT);
             String CHANNEL_ID = "MYCHANNEL";
             final NotificationManager notificationManager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
 
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-                NotificationChannel notificationChannel= new NotificationChannel(CHANNEL_ID,"name", NotificationManager.IMPORTANCE_LOW);
-                Notification notification = new Notification.Builder(context,CHANNEL_ID)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                NotificationChannel notificationChannel = new NotificationChannel(CHANNEL_ID, "name", NotificationManager.IMPORTANCE_LOW);
+                Notification notification = new Notification.Builder(context, CHANNEL_ID)
                         .setContentText("You have got something new!")
                         .setContentTitle("File downloaded")
                         .setContentIntent(pendingIntent)
@@ -265,11 +288,7 @@ class JavaScriptInterface {
                     notificationManager.notify(notificationId, b.build());
                     Handler h = new Handler();
                     long delayInMilliseconds = 1000;
-                    h.postDelayed(new Runnable() {
-                        public void run() {
-                            notificationManager.cancel(notificationId);
-                        }
-                    }, delayInMilliseconds);
+                    h.postDelayed(() -> notificationManager.cancel(notificationId), delayInMilliseconds);
                 }
             }
         }
@@ -282,80 +301,59 @@ public class MainActivity extends AppCompatActivity {
     private FrameLayout mContainer;
     private AlertDialog builder;
     private Context globalContext;
-    private WebView mWebView;
-    private String baseURL = "https://test.edilcloud.io";
+    public static WebView mWebView;
+    private String baseURL = "https://app.edilcloud.io";
     private static final String ONESIGNAL_APP_ID = "0fbdf0cf-d9f5-4363-809f-4735b1bba268";
     public static final String USER_AGENT = "Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) ' + 'AppleWebKit/537.36 (KHTML, like Gecko) Chrome/62.0.3202.94 Mobile Safari/537.36";
-    private static final String target_url_prefix="test.edilcloud.io";
-    private static boolean activityStarted;
+    private static final String target_url_prefix = "test.edilcloud.io";
+    public static boolean activityStarted;
 
-    private void enableCamera() {
-        Intent intent = new Intent(this, CameraActivity.class);
-        startActivity(intent);
-    }
 
-    class MyNotificationOpenedHandler implements OneSignal.NotificationOpenedHandler {
-        @Override
-        public void notificationOpened(OSNotificationOpenResult result) {
-            // Get custom datas from notification
-            JSONObject data = result.notification.payload.additionalData;
-            if (data.has("redirect_url")) {
-                Intent intent = new Intent(getApplicationContext(), MainActivity.class);
-                intent.setFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT | Intent.FLAG_ACTIVITY_NEW_TASK);
-                intent.putExtra("url", data.optString("redirect_url"));
-                startActivity(intent);
-                mWebView.loadUrl(data.optString("redirect_url"));
-            }
-            // Launch new activity using Application object
-            startApp();
-        }
-
-        private void startApp() {
-            Intent intent = new Intent(globalContext, MainActivity.class)
-                    .setFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT | Intent.FLAG_ACTIVITY_NEW_TASK);
-            globalContext.startActivity(intent);
-        }
-    }
-
+    @SuppressLint("SetJavaScriptEnabled")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        FirebaseMessaging.getInstance().setAutoInitEnabled(true);
 
-        if (activityStarted
-                && getIntent() != null
-                && (getIntent().getFlags() & Intent.FLAG_ACTIVITY_REORDER_TO_FRONT) != 0) {
-            finish();
-            return;
-        }
+        // Intent intent = new Intent(Settings.ACTION_BATTERY_SAVER_SETTINGS);
+        //  intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        // startActivity(intent);
 
+        /*Intent  intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+        Uri uri = Uri.fromParts("package", getPackageName(), null);
+        intent.setData(uri);
+        startActivity(intent);
+*/
         activityStarted = true;
         // Enable verbose OneSignal logging to debug issues if needed.
-        OneSignal.setLogLevel(OneSignal.LOG_LEVEL.VERBOSE, OneSignal.LOG_LEVEL.NONE);
-        //Button enableCamera = findViewById(R.id.enableCamera);
-//        enableCamera.setOnClickListener(new View.OnClickListener() {
-//            @Override
-//            public void onClick(View v) {
-//                enableCamera();
-//            }
-//        });
-        // OneSignal Initialization
-        OneSignal.startInit(this).inFocusDisplaying(OneSignal.OSInFocusDisplayOption.Notification)
-                .unsubscribeWhenNotificationsAreDisabled(true).setNotificationOpenedHandler(new MyNotificationOpenedHandler())
-                .init();
+//        OneSignal.setLogLevel(OneSignal.LOG_LEVEL.VERBOSE, OneSignal.LOG_LEVEL.NONE);
+//
+//        // OneSignal Initialization
+//        OneSignal.startInit(this).inFocusDisplaying(OneSignal.OSInFocusDisplayOption.Notification)
+//                .unsubscribeWhenNotificationsAreDisabled(true).setNotificationOpenedHandler(new MyNotificationOpenedHandler())
+//                .init();
+
 
         ActivityCompat.requestPermissions(this,
                 new String[]{
                         Manifest.permission.WRITE_EXTERNAL_STORAGE,
+                        Manifest.permission.READ_EXTERNAL_STORAGE,
                         Manifest.permission.RECORD_AUDIO,
                         Manifest.permission.CAMERA,
                 }, 101);
 
         mWebView = findViewById(R.id.root_webview);
-        mWebView.loadUrl(baseURL);
-        mContainer = (FrameLayout) findViewById(R.id.webview_frame);
-        
-        // CAMERA
+
+        if (getIntent().getStringExtra("url")!=null){
+            mWebView.loadUrl(getIntent().getStringExtra("url"));
+        }else {
+            mWebView.loadUrl(baseURL);
+        }
+
+
+        mContainer = findViewById(R.id.webview_frame);
+
         WebSettings webSettings = mWebView.getSettings();
         //webSettings.setForceDark(webSettings.FORCE_DARK_OFF);
         //used for javascript and dom functioning
@@ -383,8 +381,10 @@ public class MainActivity extends AppCompatActivity {
         mWebView.addJavascriptInterface(new RedirectBrowser(getBaseContext(), mWebView), "RedirectBrowser");
         CookieManager cookieManager = CookieManager.getInstance();
         cookieManager.setAcceptCookie(true);
+
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            cookieManager.setAcceptThirdPartyCookies(mWebView,true);
+            cookieManager.setAcceptThirdPartyCookies(mWebView, true);
         }
 //        mWebView.setDownloadListener(new DownloadListener() {
 //            public void onDownloadStart(String url, String userAgent,
@@ -395,6 +395,15 @@ public class MainActivity extends AppCompatActivity {
 //        });
         AutoStartPermissionHelper.getInstance().getAutoStartPermission(getBaseContext());
         AutoStartPermissionHelper.getInstance().isAutoStartPermissionAvailable(getBaseContext());
+
+        //remove after testing
+        mWebView.setWebChromeClient(new WebChromeClient() {
+            @Override
+            public boolean onConsoleMessage(ConsoleMessage consoleMessage) {
+                Log.e("--->Error", consoleMessage.message() + "sourceId " + consoleMessage.sourceId());
+                return super.onConsoleMessage(consoleMessage);
+            }
+        });
     }
 
     private void download(final String url) {
@@ -493,19 +502,17 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private ValueCallback<Uri[]> mFilePathCallback;
-    private String mCameraPhotoPath;
     File photoFile = null;
     private static final String TAG = "WebviewExample";
-    private static final int INPUT_FILE_REQUEST_CODE = 1;
 
     private class MyChromeClient extends WebChromeClient {
         @Override
         public void onPermissionRequest(final PermissionRequest request) {
             request.grant(request.getResources());
         }
+
         @Override
-        public boolean onCreateWindow(WebView view, boolean isDialog,
-                                      boolean isUserGesture, Message resultMsg) {
+        public boolean onCreateWindow(WebView view, boolean isDialog, boolean isUserGesture, Message resultMsg) {
             mWebviewPop = new WebView(globalContext);
             mWebviewPop.setVerticalScrollBarEnabled(false);
             mWebviewPop.setHorizontalScrollBarEnabled(false);
@@ -521,20 +528,17 @@ public class MainActivity extends AppCompatActivity {
             builder.setTitle("");
             builder.setView(mWebviewPop);
 
-            builder.setButton("Close", new DialogInterface.OnClickListener() {
-                @Override
-                public void onClick(DialogInterface dialog, int id) {
-                    mWebviewPop.destroy();
-                    dialog.dismiss();
-                }
+            builder.setButton("Close", (dialog, id) -> {
+                mWebviewPop.destroy();
+                dialog.dismiss();
             });
 
             builder.show();
-            builder.getWindow().clearFlags(WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE|WindowManager.LayoutParams.FLAG_ALT_FOCUSABLE_IM);
+            builder.getWindow().clearFlags(WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE | WindowManager.LayoutParams.FLAG_ALT_FOCUSABLE_IM);
 
             CookieManager cookieManager = CookieManager.getInstance();
             cookieManager.setAcceptCookie(true);
-            if(android.os.Build.VERSION.SDK_INT >= 21) {
+            if (Build.VERSION.SDK_INT >= 21) {
                 cookieManager.setAcceptThirdPartyCookies(mWebviewPop, true);
                 cookieManager.setAcceptThirdPartyCookies(mWebView, true);
             }
@@ -545,6 +549,7 @@ public class MainActivity extends AppCompatActivity {
 
             return true;
         }
+
         @Override
         public void onCloseWindow(WebView window) {
             //Toast.makeText(contextPop,"onCloseWindow called",Toast.LENGTH_SHORT).show();
@@ -561,70 +566,103 @@ public class MainActivity extends AppCompatActivity {
             }
 
         }
-        public boolean onShowFileChooser(WebView view, ValueCallback<Uri[]> filePath, WebChromeClient.FileChooserParams fileChooserParams) {
-            // Double check that we don't have any existing callbacks
+
+        public boolean onShowFileChooser(WebView view, ValueCallback<Uri[]> filePath, FileChooserParams fileChooserParams) {
             if (mFilePathCallback != null) {
                 mFilePathCallback.onReceiveValue(null);
             }
             mFilePathCallback = filePath;
-            Intent takePictureIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
-            Intent takeVideoIntent = new Intent(MediaStore.ACTION_VIDEO_CAPTURE);
-            if (takePictureIntent.resolveActivity(getPackageManager()) != null) {
-                // Create the File where the photo should go
-
-                try {
-                    photoFile = createImageFile();
-                    takePictureIntent.putExtra("PhotoPath", mCameraPhotoPath);
-                } catch (IOException ex) {
-                    // Error occurred while creating the File
-
-                    Log.e(TAG, "Unable to create Image File");
-                    ex.printStackTrace();
-                }
-                // Continue only if the File was successfully created
-                if (photoFile != null) {
-
-                    mCameraPhotoPath = "file:" + photoFile.getAbsolutePath();
-                    takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT,
-                            Uri.fromFile(photoFile));
-                } else {
-                    takePictureIntent = null;
-                }
-            }
-            Intent contentSelectionIntent = new Intent(Intent.ACTION_GET_CONTENT);
-            contentSelectionIntent.addCategory(Intent.CATEGORY_OPENABLE);
-            contentSelectionIntent.setType("image/*");
-            contentSelectionIntent.setType("video/*");
-            String[] mimetypes = {"application/pdf", "image/jpg", "image/jpeg", "image/png", "video/mp4", "video/wav"};
-            contentSelectionIntent.putExtra(Intent.EXTRA_MIME_TYPES, mimetypes);
-
-            Intent[] intentArray;
-            if (takePictureIntent != null) {
-                intentArray = new Intent[]{takePictureIntent, takeVideoIntent};
-            } else {
-                intentArray = new Intent[0];
-            }
-            Intent chooserIntent = new Intent(Intent.ACTION_CHOOSER);
-
-            chooserIntent.putExtra(Intent.EXTRA_INTENT, contentSelectionIntent);
-            chooserIntent.putExtra(Intent.EXTRA_TITLE, "Scegli o scatta");
-            chooserIntent.putExtra(Intent.EXTRA_INITIAL_INTENTS, intentArray);
-            startActivityForResult(chooserIntent, INPUT_FILE_REQUEST_CODE);
+            showCameraAndFileChooser(fileChooserParams);
             return true;
         }
     }
 
+    public void takeCameraPhoto() {
+        if (!getPackageManager().hasSystemFeature(PackageManager.FEATURE_CAMERA_ANY)) {
+            Toast.makeText(this, "Device without camera", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        String filePath = getExternalFilesDir("/").getAbsolutePath();
+
+        //String filePath = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM).getAbsolutePath();
+
+        Intent intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+        File mFileFromCamera = new File(filePath);
+
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N) {
+            intent.putExtra(MediaStore.EXTRA_OUTPUT, Uri.fromFile(mTakePhotoFile));
+            startActivityForResult(intent, REQUEST_FILE_CAMERA_CODE);
+        } else {
+            try {
+                mTakePhotoFile = File.createTempFile("JPEG_" + System.nanoTime(), ".jpg", mFileFromCamera);
+                Uri contentUri = FileProvider.getUriForFile(MainActivity.this, "com.monkeybits.edilcloud.download.fileprovider", mTakePhotoFile);
+                intent.putExtra(MediaStore.EXTRA_OUTPUT, contentUri);
+                intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
+                startActivityForResult(intent, REQUEST_FILE_CAMERA_CODE);
+            } catch (IOException e) {
+                Toast.makeText(this, "IOException" + e.getMessage(), Toast.LENGTH_SHORT).show();
+            }
+        }
+    }
+
+
+    private void showCameraAndFileChooser(final WebChromeClient.FileChooserParams fileChooserParams) {
+
+        CharSequence[] itemlist = {"Take a Photo", "Pick from Gallery", "Open from File"};
+
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setIcon(R.mipmap.ic_launcher);
+        builder.setTitle("Scegli o scatta");
+        builder.setItems(itemlist, (dialog, which) -> {
+            switch (which) {
+                case 0:
+                    takeCameraPhoto();
+                    break;
+                case 1:
+                    pickFromGallery();
+                    break;
+                case 2:
+                    openFromFile(fileChooserParams);
+                    break;
+                default:
+                    break;
+            }
+        });
+        AlertDialog alert = builder.create();
+        alert.setCancelable(true);
+        alert.show();
+    }
+
+    private void pickFromGallery() {
+        Intent i = new Intent(Intent.ACTION_GET_CONTENT);
+        i.addCategory(Intent.CATEGORY_OPENABLE);
+        i.setType("*/*");
+        startActivityForResult(Intent.createChooser(i, "File Browser"), REQUEST_FILE_CHOOSER_CODE);
+    }
+
+    private void openFromFile(final WebChromeClient.FileChooserParams fileChooserParams) {
+        try {
+            Intent intent = fileChooserParams.createIntent();
+            startActivityForResult(intent, REQUEST_SELECT_FILE_CODE);
+        } catch (ActivityNotFoundException e) {
+            Toast.makeText(globalContext, "" + e.getMessage(), Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    int REQUEST_FILE_CAMERA_CODE = 1001;
+    int REQUEST_SELECT_FILE_CODE = 1002;
+    int REQUEST_FILE_CHOOSER_CODE = 1003;
+    private File mTakePhotoFile;
 
     private File createImageFile() throws IOException {
         // Create an image file name
         String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(new Date());
         String imageFileName = "JPEG_" + timeStamp + "_";
-        File storageDir = getExternalFilesDir(Environment.DIRECTORY_PICTURES);
-        return File.createTempFile(
-                imageFileName,  /* prefix */
-                ".jpg",         /* suffix */
-                storageDir      /* directory */
-        );
+
+        String filePath = getExternalFilesDir("/").getAbsolutePath();
+
+        // String destination = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS) + "/";
+        return File.createTempFile(imageFileName, ".jpg", new File(filePath));
     }
 
     private static Bitmap rotateBitmap(Bitmap bitmap, int orientation) {
@@ -670,60 +708,56 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-
-
     @Override
     public void onActivityResult(int requestCode, int resultCode, Intent data) {
-        if (requestCode != INPUT_FILE_REQUEST_CODE || mFilePathCallback == null) {
+        if (mFilePathCallback == null) {
             super.onActivityResult(requestCode, resultCode, data);
             return;
         }
         Uri[] results = null;
-        // Check that the response is a good one
-        if (resultCode == Activity.RESULT_OK) {
-            if (data == null) {
-                // If there is not data, then we may have taken a photo
-                if (mCameraPhotoPath != null) {
-                    //TODO: can we compress this camera photo?
-                    File compressedImageFile = null;
 
-                   //*********Remove this code if you don't want image compression
-                    try {
-                        File storageDir = getExternalFilesDir(Environment.DIRECTORY_PICTURES);
 
-                        if (storageDir != null && photoFile != null) {
-                            compressedImageFile = createImageFile();
-                            Log.d(TAG, "onActivityResult: Compressing image");
-                            FileOutputStream fileOutputStream = new FileOutputStream(compressedImageFile);
-                            Bitmap originalBitmap = BitmapFactory.decodeFile(photoFile.getPath());
-                            ExifInterface exif = new ExifInterface(photoFile.getPath());
-                            int orientation = exif.getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_UNDEFINED);
-                            Bitmap rotatedBitmap = rotateBitmap(originalBitmap, orientation);
-                            rotatedBitmap.compress(Bitmap.CompressFormat.JPEG, 80, fileOutputStream);
-                        }
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                        compressedImageFile = null;
+        if (requestCode == REQUEST_FILE_CAMERA_CODE && resultCode == Activity.RESULT_OK) {
+            if (mTakePhotoFile != null) {
+
+                File compressedImageFile = null;
+                try {
+                    File storageDir = getExternalFilesDir(Environment.DIRECTORY_PICTURES);
+
+                    if (storageDir != null && photoFile != null) {
+                        compressedImageFile = createImageFile();
+                        FileOutputStream fileOutputStream = new FileOutputStream(compressedImageFile);
+                        Bitmap originalBitmap = BitmapFactory.decodeFile(photoFile.getPath());
+                        ExifInterface exif = new ExifInterface(photoFile.getPath());
+                        int orientation = exif.getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_UNDEFINED);
+                        Bitmap rotatedBitmap = rotateBitmap(originalBitmap, orientation);
+                        assert rotatedBitmap != null;
+                        rotatedBitmap.compress(Bitmap.CompressFormat.JPEG, 80, fileOutputStream);
                     }
-                    //*********till here only remove this code********
-
-                    if (compressedImageFile != null) {
-                        results = new Uri[]{Uri.parse("file:" + compressedImageFile.getAbsolutePath())};
-                    } else {
-                        results = new Uri[]{Uri.parse(mCameraPhotoPath)};
-                    }
-
-
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    Toast.makeText(globalContext, "Exception" + e.getMessage(), Toast.LENGTH_SHORT).show();
+                    compressedImageFile = null;
                 }
-            } else {
-                String dataString = data.getDataString();
-                if (dataString != null) {
-                    results = new Uri[]{Uri.parse(dataString)};
+
+                if (compressedImageFile != null) {
+                    results = new Uri[]{Uri.parse("file:" + compressedImageFile.getAbsolutePath())};
+                } else {
+                    results = new Uri[]{Uri.parse("file:" + mTakePhotoFile.getAbsolutePath())};
                 }
+
+
+            }
+        } else if (requestCode == REQUEST_SELECT_FILE_CODE || requestCode == REQUEST_FILE_CHOOSER_CODE) {
+            if (resultCode == Activity.RESULT_OK) {
+                results = WebChromeClient.FileChooserParams.parseResult(resultCode, data);
+
             }
         }
+
         mFilePathCallback.onReceiveValue(results);
         mFilePathCallback = null;
+
     }
 
 
@@ -739,25 +773,22 @@ public class MainActivity extends AppCompatActivity {
                 return true;
             } else {
             }
-            if (url.contains("customer-portal") || url.contains("billing")){
+            if (url.contains("customer-portal") || url.contains("billing")) {
                 return false;
             }
             //Log.d("shouldOverrideUrlLoading", url);
-            if (host.equals(target_url_prefix))
-            {
+            if (host.equals(target_url_prefix)) {
                 // This is my web site, so do not override; let my WebView load
                 // the page
-                if(mWebviewPop!=null)
-                {
+                if (mWebviewPop != null) {
                     mWebviewPop.setVisibility(View.GONE);
                     mContainer.removeView(mWebviewPop);
-                    mWebviewPop=null;
+                    mWebviewPop = null;
                 }
                 return false;
             }
 
-            if(host.equals("m.facebook.com"))
-            {
+            if (host.equals("m.facebook.com")) {
                 return false;
             }
 //            // Otherwise, the link is not for a page on my site, so launch
@@ -765,6 +796,7 @@ public class MainActivity extends AppCompatActivity {
             return true;
         }
     }
+
     public boolean onKeyDown(int keyCode, KeyEvent event) {
         // Check if the key event was the Back button and if there's history
         if ((keyCode == KeyEvent.KEYCODE_BACK) && mWebView.canGoBack()) {
@@ -776,9 +808,28 @@ public class MainActivity extends AppCompatActivity {
         return super.onKeyDown(keyCode, event);
     }
 
+
+ @Override
+ protected void onDestroy() {
+     super.onDestroy();
+     activityStarted=false;
+ }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        activityStarted=true;
+
+    }
+
+        @Override
+    protected void onResume() {
+        super.onResume();
+        activityStarted=false;
+    }
 }
 
-class BootUpReceiver extends BroadcastReceiver{
+class BootUpReceiver extends BroadcastReceiver {
     @Override
     public void onReceive(Context context, Intent intent) {
         Intent i = new Intent(context, MainActivity.class);
@@ -786,3 +837,6 @@ class BootUpReceiver extends BroadcastReceiver{
         context.startActivity(i);
     }
 }
+
+
+
