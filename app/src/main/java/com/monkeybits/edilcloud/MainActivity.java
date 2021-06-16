@@ -1,7 +1,6 @@
 package com.monkeybits.edilcloud;
 
 import android.Manifest;
-import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.DownloadManager;
@@ -11,6 +10,7 @@ import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.ActivityNotFoundException;
 import android.content.BroadcastReceiver;
+import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
@@ -32,7 +32,6 @@ import android.util.Log;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.WindowManager;
-import android.webkit.ConsoleMessage;
 import android.webkit.CookieManager;
 import android.webkit.JavascriptInterface;
 import android.webkit.MimeTypeMap;
@@ -49,14 +48,10 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.app.NotificationCompat;
 import androidx.core.content.FileProvider;
-import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
 import com.google.firebase.messaging.FirebaseMessaging;
-import com.google.firebase.messaging.FirebaseMessagingService;
-import com.google.firebase.messaging.RemoteMessage;
 import com.judemanutd.autostarter.AutoStartPermissionHelper;
-
-import org.json.JSONObject;
+import com.monkeybits.edilcloud.photoediter.EditImageActivity;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -64,9 +59,7 @@ import java.io.IOException;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.Locale;
-import java.util.Map;
 
 
 class OneSignalSetUser {
@@ -74,7 +67,7 @@ class OneSignalSetUser {
     public void postMessage(String data) throws IOException {
         final String TAG = "WebviewExample";
         Log.d(TAG, "setExternalUserId: userid is " + data);
-        FirebaseMessaging.getInstance().subscribeToTopic("user"+data)
+        FirebaseMessaging.getInstance().subscribeToTopic("user" + data)
                 .addOnCompleteListener(task -> {
                     String msg = "msg subscribed";
                     if (!task.isSuccessful()) {
@@ -82,7 +75,20 @@ class OneSignalSetUser {
                     }
                     Log.d(TAG, msg);
                 });
+    }
+}
 
+class FirebaseUnsubscribeUser {
+    @JavascriptInterface
+    public void postMessage(String data) throws IOException {
+        Log.d("WebviewExample", "setExternalUserId: userid is " + data);
+        FirebaseMessaging.getInstance().unsubscribeFromTopic("user" + data).addOnCompleteListener(task -> {
+            String msg = "msg unsubscribed";
+            if (!task.isSuccessful()) {
+                msg = "msg unsubscribe failed";
+            }
+            Log.d("WebviewExample", msg);
+        });
     }
 }
 
@@ -301,20 +307,26 @@ public class MainActivity extends AppCompatActivity {
     private FrameLayout mContainer;
     private AlertDialog builder;
     private Context globalContext;
-    public static WebView mWebView;
+    private WebView mWebView;
     private String baseURL = "https://app.edilcloud.io";
-    private static final String ONESIGNAL_APP_ID = "0fbdf0cf-d9f5-4363-809f-4735b1bba268";
     public static final String USER_AGENT = "Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) ' + 'AppleWebKit/537.36 (KHTML, like Gecko) Chrome/62.0.3202.94 Mobile Safari/537.36";
-    private static final String target_url_prefix = "test.edilcloud.io";
-    public static boolean activityStarted;
+    private static final String target_url_prefix = "app.edilcloud.io";
+    private static boolean activityStarted;
 
 
-    @SuppressLint("SetJavaScriptEnabled")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         FirebaseMessaging.getInstance().setAutoInitEnabled(true);
+
+//        if (activityStarted
+//                && getIntent() != null
+//                && (getIntent().getFlags() & Intent.FLAG_ACTIVITY_REORDER_TO_FRONT) != 0) {
+//            finish();
+//            return;
+//        }
+
 
         // Intent intent = new Intent(Settings.ACTION_BATTERY_SAVER_SETTINGS);
         //  intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
@@ -326,13 +338,6 @@ public class MainActivity extends AppCompatActivity {
         startActivity(intent);
 */
         activityStarted = true;
-        // Enable verbose OneSignal logging to debug issues if needed.
-//        OneSignal.setLogLevel(OneSignal.LOG_LEVEL.VERBOSE, OneSignal.LOG_LEVEL.NONE);
-//
-//        // OneSignal Initialization
-//        OneSignal.startInit(this).inFocusDisplaying(OneSignal.OSInFocusDisplayOption.Notification)
-//                .unsubscribeWhenNotificationsAreDisabled(true).setNotificationOpenedHandler(new MyNotificationOpenedHandler())
-//                .init();
 
 
         ActivityCompat.requestPermissions(this,
@@ -345,13 +350,11 @@ public class MainActivity extends AppCompatActivity {
 
         mWebView = findViewById(R.id.root_webview);
 
-        if (getIntent().getStringExtra("url")!=null){
+        if (getIntent().getStringExtra("url") != null) {
             mWebView.loadUrl(getIntent().getStringExtra("url"));
-        }else {
+        } else {
             mWebView.loadUrl(baseURL);
         }
-
-
         mContainer = findViewById(R.id.webview_frame);
 
         WebSettings webSettings = mWebView.getSettings();
@@ -377,12 +380,11 @@ public class MainActivity extends AppCompatActivity {
         webSettings.setSaveFormData(true);
         mWebView.addJavascriptInterface(new JavaScriptInterface(getBaseContext()), "Android");
         mWebView.addJavascriptInterface(new OneSignalSetUser(), "OneSignalSetUser");
+        mWebView.addJavascriptInterface(new FirebaseUnsubscribeUser(), "FirebaseUnsubscribeUser");
         mWebView.addJavascriptInterface(new DownloadFiles(getBaseContext()), "DownloadFiles");
         mWebView.addJavascriptInterface(new RedirectBrowser(getBaseContext(), mWebView), "RedirectBrowser");
         CookieManager cookieManager = CookieManager.getInstance();
         cookieManager.setAcceptCookie(true);
-
-
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             cookieManager.setAcceptThirdPartyCookies(mWebView, true);
         }
@@ -395,15 +397,6 @@ public class MainActivity extends AppCompatActivity {
 //        });
         AutoStartPermissionHelper.getInstance().getAutoStartPermission(getBaseContext());
         AutoStartPermissionHelper.getInstance().isAutoStartPermissionAvailable(getBaseContext());
-
-        //remove after testing
-        mWebView.setWebChromeClient(new WebChromeClient() {
-            @Override
-            public boolean onConsoleMessage(ConsoleMessage consoleMessage) {
-                Log.e("--->Error", consoleMessage.message() + "sourceId " + consoleMessage.sourceId());
-                return super.onConsoleMessage(consoleMessage);
-            }
-        });
     }
 
     private void download(final String url) {
@@ -502,7 +495,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private ValueCallback<Uri[]> mFilePathCallback;
-    File photoFile = null;
+//    File photoFile = null;
     private static final String TAG = "WebviewExample";
 
     private class MyChromeClient extends WebChromeClient {
@@ -608,7 +601,7 @@ public class MainActivity extends AppCompatActivity {
 
     private void showCameraAndFileChooser(final WebChromeClient.FileChooserParams fileChooserParams) {
 
-        CharSequence[] itemlist = {"Take a Photo", "Pick from Gallery", "Open from File"};
+        CharSequence[] itemlist = {"Scatta una foto", "Registra un video", "Scegli dalla Galleria"};
 
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setIcon(R.mipmap.ic_launcher);
@@ -619,10 +612,10 @@ public class MainActivity extends AppCompatActivity {
                     takeCameraPhoto();
                     break;
                 case 1:
-                    pickFromGallery();
+                    videoRecording();
                     break;
                 case 2:
-                    openFromFile(fileChooserParams);
+                    pickFromGallery();
                     break;
                 default:
                     break;
@@ -630,29 +623,52 @@ public class MainActivity extends AppCompatActivity {
         });
         AlertDialog alert = builder.create();
         alert.setCancelable(true);
+        alert.setOnCancelListener(dialogInterface -> setWebViewFileCallback(null));
         alert.show();
+    }
+
+    private void videoRecording() {
+        if (!getPackageManager().hasSystemFeature(PackageManager.FEATURE_CAMERA_ANY)) {
+            Toast.makeText(this, "Device without camera", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        Intent takeVideoIntent = new Intent(MediaStore.ACTION_VIDEO_CAPTURE);
+        // if (takeVideoIntent.resolveActivity(getPackageManager()) != null) {
+        startActivityForResult(takeVideoIntent, REQUEST_VIDEO_CAPTURE);
+        // }
     }
 
     private void pickFromGallery() {
         Intent i = new Intent(Intent.ACTION_GET_CONTENT);
         i.addCategory(Intent.CATEGORY_OPENABLE);
-        i.setType("*/*");
+        //  i.setType("*/*");
+        i.setType("image/*");
+        i.setType("video/*");
+        String[] mimetypes = {"application/pdf", "image/jpg", "image/jpeg", "image/png", "video/mp4", "video/wav"};
+        i.putExtra(Intent.EXTRA_MIME_TYPES, mimetypes);
         startActivityForResult(Intent.createChooser(i, "File Browser"), REQUEST_FILE_CHOOSER_CODE);
-    }
 
-    private void openFromFile(final WebChromeClient.FileChooserParams fileChooserParams) {
-        try {
-            Intent intent = fileChooserParams.createIntent();
-            startActivityForResult(intent, REQUEST_SELECT_FILE_CODE);
-        } catch (ActivityNotFoundException e) {
-            Toast.makeText(globalContext, "" + e.getMessage(), Toast.LENGTH_SHORT).show();
-        }
     }
 
     int REQUEST_FILE_CAMERA_CODE = 1001;
-    int REQUEST_SELECT_FILE_CODE = 1002;
     int REQUEST_FILE_CHOOSER_CODE = 1003;
+    int REQUEST_FOR_EDIT_IMAGE = 1004;
+    int REQUEST_VIDEO_CAPTURE = 1005;
     private File mTakePhotoFile;
+
+//    private void openFromFile(final WebChromeClient.FileChooserParams fileChooserParams) {
+//        try {
+//            Intent intent = fileChooserParams.createIntent();
+//            startActivityForResult(intent, REQUEST_SELECT_FILE_CODE);
+//        } catch (ActivityNotFoundException e) {
+//            Toast.makeText(globalContext, "" + e.getMessage(), Toast.LENGTH_SHORT).show();
+//        }
+//    }
+
+//    int REQUEST_FILE_CAMERA_CODE = 1001;
+//    int REQUEST_SELECT_FILE_CODE = 1002;
+//    int REQUEST_FILE_CHOOSER_CODE = 1003;
+//    private File mTakePhotoFile;
 
     private File createImageFile() throws IOException {
         // Create an image file name
@@ -668,8 +684,6 @@ public class MainActivity extends AppCompatActivity {
     private static Bitmap rotateBitmap(Bitmap bitmap, int orientation) {
         Matrix matrix = new Matrix();
         switch (orientation) {
-            case ExifInterface.ORIENTATION_NORMAL:
-                return bitmap;
             case ExifInterface.ORIENTATION_FLIP_HORIZONTAL:
                 matrix.setScale(-1, 1);
                 break;
@@ -710,54 +724,88 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     public void onActivityResult(int requestCode, int resultCode, Intent data) {
-        if (mFilePathCallback == null) {
-            super.onActivityResult(requestCode, resultCode, data);
-            return;
-        }
-        Uri[] results = null;
-
-
-        if (requestCode == REQUEST_FILE_CAMERA_CODE && resultCode == Activity.RESULT_OK) {
-            if (mTakePhotoFile != null) {
-
-                File compressedImageFile = null;
-                try {
-                    File storageDir = getExternalFilesDir(Environment.DIRECTORY_PICTURES);
-
-                    if (storageDir != null && photoFile != null) {
-                        compressedImageFile = createImageFile();
-                        FileOutputStream fileOutputStream = new FileOutputStream(compressedImageFile);
-                        Bitmap originalBitmap = BitmapFactory.decodeFile(photoFile.getPath());
-                        ExifInterface exif = new ExifInterface(photoFile.getPath());
-                        int orientation = exif.getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_UNDEFINED);
-                        Bitmap rotatedBitmap = rotateBitmap(originalBitmap, orientation);
-                        assert rotatedBitmap != null;
-                        rotatedBitmap.compress(Bitmap.CompressFormat.JPEG, 80, fileOutputStream);
-                    }
-                } catch (Exception e) {
-                    e.printStackTrace();
-                    Toast.makeText(globalContext, "Exception" + e.getMessage(), Toast.LENGTH_SHORT).show();
-                    compressedImageFile = null;
-                }
-
-                if (compressedImageFile != null) {
-                    results = new Uri[]{Uri.parse("file:" + compressedImageFile.getAbsolutePath())};
-                } else {
-                    results = new Uri[]{Uri.parse("file:" + mTakePhotoFile.getAbsolutePath())};
-                }
-
-
+        if (requestCode == REQUEST_FOR_EDIT_IMAGE) {
+            if (mFilePathCallback == null) {
+                super.onActivityResult(requestCode, resultCode, data);
+                return;
             }
-        } else if (requestCode == REQUEST_SELECT_FILE_CODE || requestCode == REQUEST_FILE_CHOOSER_CODE) {
             if (resultCode == Activity.RESULT_OK) {
-                results = WebChromeClient.FileChooserParams.parseResult(resultCode, data);
+                setWebViewFileCallback(new Uri[]{data.getData()});
+            } else {
+                setWebViewFileCallback(null);
+            }
 
+        } else {
+
+            if (requestCode == REQUEST_FILE_CAMERA_CODE) {
+                if (resultCode == Activity.RESULT_OK) {
+                    if (mTakePhotoFile != null) {
+
+                        File compressedImageFile=null;
+                        try {
+                            File storageDir = getExternalFilesDir(Environment.DIRECTORY_PICTURES);
+
+                            if (storageDir != null ) {
+                                compressedImageFile = createImageFile();
+                                FileOutputStream fileOutputStream = new FileOutputStream(compressedImageFile);
+                                Bitmap originalBitmap = BitmapFactory.decodeFile(mTakePhotoFile.getPath());
+                                ExifInterface exif = new ExifInterface(mTakePhotoFile.getPath());
+                                int orientation = exif.getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_UNDEFINED);
+                                Bitmap rotatedBitmap = rotateBitmap(originalBitmap, orientation);
+                                assert rotatedBitmap != null;
+                                rotatedBitmap.compress(Bitmap.CompressFormat.JPEG, 80, fileOutputStream);
+                            }
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                            Toast.makeText(globalContext, "Exception" + e.getMessage(), Toast.LENGTH_SHORT).show();
+                            compressedImageFile = null;
+                        }
+
+                        Uri uri;
+                        if (compressedImageFile != null) {
+                            uri = Uri.parse("file:" + compressedImageFile.getAbsolutePath());
+                            //results = new Uri[]{Uri.parse("file:" + compressedImageFile.getAbsolutePath())};
+                        } else {
+                            uri = Uri.parse("file:" + mTakePhotoFile.getAbsolutePath());
+                            // results = new Uri[]{Uri.parse("file:" + mTakePhotoFile.getAbsolutePath())};
+                        }
+
+                        try {
+                            Intent intent = new Intent(MainActivity.this, EditImageActivity.class);
+                            intent.setData(uri);
+                            startActivityForResult(intent, REQUEST_FOR_EDIT_IMAGE);
+                        } catch (Exception e) {
+                            Toast.makeText(globalContext, "Exception: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                            setWebViewFileCallback(null);
+                        }
+                    }
+                } else {
+                    setWebViewFileCallback(null);
+                }
+
+            } else if (requestCode == REQUEST_FILE_CHOOSER_CODE || requestCode == REQUEST_VIDEO_CAPTURE) {
+                if (resultCode == Activity.RESULT_OK) {
+                    ContentResolver cr = this.getContentResolver();
+                    String mime = cr.getType(data.getData());
+                    if (mime.toLowerCase().contains("image")) {
+                        Intent intent = new Intent(MainActivity.this, EditImageActivity.class);
+                        intent.setData(data.getData());
+                        startActivityForResult(intent, REQUEST_FOR_EDIT_IMAGE);
+                    } else {
+                        setWebViewFileCallback(WebChromeClient.FileChooserParams.parseResult(resultCode, data));
+                    }
+
+                } else {
+                    setWebViewFileCallback(null);
+                }
             }
         }
 
-        mFilePathCallback.onReceiveValue(results);
-        mFilePathCallback = null;
 
+    }
+    private void setWebViewFileCallback(Uri[] o) {
+        mFilePathCallback.onReceiveValue(o);
+        mFilePathCallback = null;
     }
 
 
@@ -771,7 +819,6 @@ public class MainActivity extends AppCompatActivity {
             } else if (url.startsWith("tel:")) {
                 startActivity(new Intent(Intent.ACTION_DIAL, Uri.parse(url)));
                 return true;
-            } else {
             }
             if (url.contains("customer-portal") || url.contains("billing")) {
                 return false;
@@ -788,12 +835,9 @@ public class MainActivity extends AppCompatActivity {
                 return false;
             }
 
-            if (host.equals("m.facebook.com")) {
-                return false;
-            }
+            return !host.equals("m.facebook.com");
 //            // Otherwise, the link is not for a page on my site, so launch
 //            // another Activity that handles URLs
-            return true;
         }
     }
 
@@ -808,25 +852,6 @@ public class MainActivity extends AppCompatActivity {
         return super.onKeyDown(keyCode, event);
     }
 
-
- @Override
- protected void onDestroy() {
-     super.onDestroy();
-     activityStarted=false;
- }
-
-    @Override
-    protected void onPause() {
-        super.onPause();
-        activityStarted=true;
-
-    }
-
-        @Override
-    protected void onResume() {
-        super.onResume();
-        activityStarted=false;
-    }
 }
 
 class BootUpReceiver extends BroadcastReceiver {
@@ -837,6 +862,3 @@ class BootUpReceiver extends BroadcastReceiver {
         context.startActivity(i);
     }
 }
-
-
-

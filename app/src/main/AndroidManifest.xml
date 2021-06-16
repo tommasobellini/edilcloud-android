@@ -4,7 +4,6 @@
     package="com.monkeybits.edilcloud">
 
     <uses-permission android:name="android.permission.INTERNET" />
-    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
@@ -19,6 +18,7 @@
     <uses-permission android:name="android.permission.VIDEO_CAPTURE" />
     <uses-permission android:name="android.permission.AUDIO_CAPTURE" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.ACCESS_NOTIFICATION_POLICY"/>
 
     <application
         android:allowBackup="true"
@@ -29,19 +29,15 @@
         android:supportsRtl="true"
         android:theme="@style/AppTheme"
         android:usesCleartextTraffic="true">
-        <!-- <meta-data android:name="com.onesignal.NotificationServiceExtension" -->
-        <!-- android:value="com.monkeybits.edilcloud.NotificationServiceExtension" /> -->
-        <!-- <meta-data -->
-        <!-- android:name="com.onesignal.Notification" -->
-        <!-- android:resource="@drawable/ic_stat_name" /> -->
-        <!-- <meta-data android:name="com.onesignal.NotificationAccentColor.DEFAULT" android:value="FF1BB6BE" /> -->
-        <!-- <receiver android:enabled="true" android:name="com.onesignal.BootUpReceiver" -->
-        <!-- android:permission="android.permission.RECEIVE_BOOT_COMPLETED"> -->
-        <!-- <intent-filter> -->
-        <!-- <action android:name="android.intent.action.BOOT_COMPLETED" /> -->
-        <!-- <category android:name="android.intent.category.DEFAULT" /> -->
-        <!-- </intent-filter> -->
-        <!-- </receiver> -->
+
+        <!--        <activity android:name=".CameraActivity"/>-->
+        <!--        <receiver android:enabled="true" android:name="com.onesignal.BootUpReceiver"-->
+        <!--            android:permission="android.permission.RECEIVE_BOOT_COMPLETED">-->
+        <!--            <intent-filter>-->
+        <!--                <action android:name="android.intent.action.BOOT_COMPLETED" />-->
+        <!--                <category android:name="android.intent.category.DEFAULT" />-->
+        <!--            </intent-filter>-->
+        <!--        </receiver>-->
         <activity
             android:name=".MainActivity"
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
@@ -54,6 +50,15 @@
             </intent-filter>
         </activity>
 
+        <meta-data
+            android:name="preloaded_fonts"
+            android:resource="@array/preloaded_fonts" />
+        <activity
+            android:name=".photoediter.EditImageActivity"
+            android:screenOrientation="portrait"
+            android:theme="@style/AppTheme">
+        </activity>
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="com.monkeybits.edilcloud.download.fileprovider"
@@ -63,6 +68,7 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/provider_paths" />
         </provider>
+
 
         <service
             android:name=".MyFireBaseNotification"
@@ -79,12 +85,11 @@
             android:name="com.google.firebase.messaging.default_notification_color"
             android:resource="@android:color/white" />
 
-<!--        <receiver android:name=".MyBroadcast">-->
-<!--            <intent-filter>-->
-<!--                <action android:name="NotificationReceive">-->
-<!--                </action>-->
-<!--            </intent-filter>-->
-<!--        </receiver>-->
+        <!--        <meta-data-->
+        <!--            android:name="com.google.firebase.messaging.default_notification_channel_id"-->
+        <!--            android:value="@string/default_notification_channel_id" />-->
+
+
     </application>
 
 </manifest>
